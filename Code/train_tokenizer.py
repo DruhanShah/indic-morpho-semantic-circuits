@@ -7,7 +7,7 @@ from transformers import GPT2TokenizerFast
 from utils import init_environ, set_seed, load_data, filter_empty_texts
 
 
-@hydra.main(version_base=None, config_path=".", config_name="config")
+@hydra.main(version_base=None, config_path="conf", config_name="training")
 def train_tokenizer(cfg):
     init_environ(cfg.paths.assets_dir)
     set_seed(cfg.seed)

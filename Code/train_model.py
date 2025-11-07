@@ -43,7 +43,7 @@ def preprocess_data(cfg, tokenizer):
     return lm_train, lm_eval
 
 
-@hydra.main(version_base=None, config_path=".", config_name="config")
+@hydra.main(version_base=None, config_path="conf", config_name="training")
 def train_model(cfg):
     init_environ(cfg.paths.assets_dir)
     set_seed(cfg.seed)

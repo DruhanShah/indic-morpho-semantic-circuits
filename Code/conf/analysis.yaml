@@ -1,0 +1,25 @@
+lang: en # hi, en
+model_path: ../Assets/${lang}_tinystories
+device: ${torch_device:cuda}
+
+model:
+  n_positions: 512
+  n_embd: 384
+  n_layer: 6
+  n_head: 6
+
+experiment:
+  # list_modules, ablation, patching, scan_ablation, scan_patching
+  type: scan_ablation
+
+  prompt: "John bought a book. Mary read the"
+  target_layer: 0
+  target_head: 0
+
+  clean_prompt: "The cat sat on the mat"
+  corrupted_prompt: "The dog sat on the mat"
+
+  target_module: "transformer.h.3.mlp"
+
+  target_token_idx: -1
+  compare_tokens: ["book", "John"]
