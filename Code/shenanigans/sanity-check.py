@@ -5,27 +5,28 @@ MODEL_PATH = "../../Assets/en_tinystories"
 
 PROMPTS = [
     # "बिल्ली ने चूहे का पीछा किया। बिल्ली चूहे को",
-    "Mary and John went to the store. John gave a book to"
+    "John and Mary went to the garden. John gave a flower to"
 ]
 
-MAX_LENGTH = 22
+MAX_LENGTH = 44
 TEMPERATURE = 0.9
-DO_SAMPLE = True
+DO_SAMPLE = False
 NUM_RETURN_SEQUENCES = 1
+
 
 def run_generation_check():
     print(f"Loading model and tokenizer from: {MODEL_PATH}")
-    
+
     try:
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        
+
         tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH)
         model = AutoModelForCausalLM.from_pretrained(MODEL_PATH).to(device)
         model.eval()
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
             model.config.pad_token_id = model.config.eos_token_id
-            
+
         print(f"Model loaded successfully on {device}.")
 
     except Exception as e:

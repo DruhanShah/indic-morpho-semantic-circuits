@@ -6,7 +6,7 @@ from datasets import load_from_disk
 from transformers import (
     AutoConfig, AutoModelForCausalLM,
     DataCollatorForLanguageModeling,
-    GPT2TokenizerFast,
+    AutoTokenizer,
     Trainer, TrainingArguments,
 )
 
