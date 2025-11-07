@@ -1,0 +1,5 @@
+# Model files (not yet required to store)
+# *.safetensors filter=lfs diff=lfs merge=lfs -text
+
+# Data files (currently gitignored)
+*.arrow filter=lfs diff=lfs merge=lfs -text

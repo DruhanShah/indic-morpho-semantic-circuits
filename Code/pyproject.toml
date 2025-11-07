@@ -1,11 +1,12 @@
 [project]
-name = "code"
+name = "anlp-proj"
 version = "0.1.0"
-requires-python = ">=3.13"
+requires-python = "==3.10.12"
 dependencies = [
-    "datasets>=4.3.0",
+    "datasets>=4.4.1",
+    "evaluate>=0.4.6",
     "hydra-core>=1.3.2",
-    "tokenizers>=0.22.1",
-    "torch>=2.9.0",
+    "matplotlib>=3.10.7",
+    "torch==2.7.0",
     "transformers[torch]>=4.57.1",
 ]

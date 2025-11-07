@@ -1,51 +1,54 @@
 paths:
   assets_dir: /scratch/druhan/anlp
+  output_dir: ${paths.assets_dir}/models/${language}_tinystories
 
 seed: 42
-
-
-language: en # en, hi, te
+language: hi
 
 data:
-  name: wikipedia
-  date: "20231101"
-  split: "train[:1%]"
+  dataset_name: OmAlve/TinyStories-Hindi
+  max_samples: -1
+  val_split: 0.05
 
 tokenizer:
-  vocab_size: 50257
+  vocab_size: 16384
   min_frequency: 2
+  train_samples: 200000
 
-# GPT-2 Small
 model:
-  n_ctx: 256
-  n_embd: 768
-  n_l: 12
-  n_h: 12
+  n_positions: 512
+  n_embd: 384
+  n_layer: 6
+  n_head: 6
 
 processing:
   num_workers: 4
+  batch_size: 1000
 
-# Corresponds to Hugging Face"s transformers.TrainingArguments
 training:
-  num_train_epochs: 3
-  per_device_train_batch_size: 8
-  learning_rate: 5e-5
-
+  num_train_epochs: 2
+  per_device_train_batch_size: 16
+  learning_rate: 5e-4
+  
   weight_decay: 0.01
   adam_beta1: 0.9
   adam_beta2: 0.999
   adam_epsilon: 1e-8
-  lr_scheduler_type: "cosine" # "linear", "cosine", "constant", etc.
-  warmup_steps: 500
-
-  logging_strategy: "steps"
-  logging_steps: 500
-  save_strategy: "steps"
-  save_steps: 10000
-  save_total_limit: 2
-
-  fp16: true
   
+  lr_scheduler_type: cosine
+  warmup_steps: 500
+  
+  logging_strategy: steps
+  logging_steps: 1000
+  eval_strategy: steps
+  eval_steps: 10000
+  
+  save_strategy: steps
+  save_steps: 10000
+  
+  fp16: true
   prediction_loss_only: true
-  report_to: "none" # "tensorboard", "wandb", etc.
+  report_to: none
   overwrite_output_dir: true
+  load_best_model_at_end: true
+  metric_for_best_model: eval_loss

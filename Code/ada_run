@@ -1,0 +1,15 @@
+#!/bin/bash
+#SBATCH --nodes=1
+#SBATCH --account=nlp
+#SBATCH --gres=gpu:4
+#SBATCH --cpus-per-gpu=10
+#SBATCH --time=1-00:00:00
+#SBATCH --output=out-hi
+
+mkdir -p /scratch/druhan/anlp
+rsync -avz druhan@ada:/share1/druhan/anlp/ /scratch/druhan/anlp/
+source .venv/bin/activate
+torchrun --nproc_per_node=4 train_model.py language=hi
+deactivate
+rm -rf outputs __pycache__
+rsync -avz /scratch/druhan/anlp/ druhan@ada:/share1/druhan/anlp/

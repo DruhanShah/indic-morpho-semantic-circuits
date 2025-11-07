@@ -1,34 +1,46 @@
 from pathlib import Path
 
 import hydra
-from datasets import load_dataset
 from omegaconf import OmegaConf
+from datasets import load_from_disk
 from transformers import (
-    AutoConfig,
-    AutoModelForCausalLM,
-    DataCollatorForLanguageModeling as Collator,
+    AutoConfig, AutoModelForCausalLM,
+    DataCollatorForLanguageModeling,
     GPT2TokenizerFast,
-    Trainer,
-    TrainingArguments,
+    Trainer, TrainingArguments,
 )
 
-from utils import init_environ, set_seed
+from utils import (
+    init_environ, set_seed, load_data,
+    filter_empty_texts, tokenize_and_group, split_data,
+    plot_metrics,
+)
 
 
-def group_texts(examples, block_size):
-    concatenated = {k: sum(examples[k], []) for k in examples.keys()}
-    total_length = len(concatenated[list(examples.keys())[0]])
+def preprocess_data(cfg, tokenizer):
+    data_path = Path(cfg.paths.output_dir) / "data" / "processed" / cfg.language
+    train_path = data_path / "train"
+    eval_path = data_path / "eval"
 
-    if total_length < block_size:
-        return {k: [] for k in concatenated.keys()}
+    if train_path.exists() and eval_path.exists():
+        lm_train = load_from_disk(str(train_path))
+        lm_eval = load_from_disk(str(eval_path))
+        print(f"Loaded train blocks: {len(lm_train)}")
+        print(f"Loaded eval blocks: {len(lm_eval)}")
+    else:
+        dataset = load_data(cfg.data.dataset_name, cfg.language)
+        dataset = filter_empty_texts(dataset)
+        print(f"Filtered dataset size: {len(dataset)}")
 
-    total_length = (total_length // block_size) * block_size
-    result = {
-        k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
-        for k, t in concatenated.items()
-    }
-    result["labels"] = result["input_ids"].copy()
-    return result
+        train_dataset, eval_dataset = split_data(dataset, cfg.data.val_split, cfg.seed)
+
+        print("Tokenizing dataset...")
+        lm_train, lm_eval = tokenize_and_group(train_dataset, eval_dataset, tokenizer,
+                                               cfg.processing, cfg.model.n_positions)
+        lm_train.save_to_disk(str(train_path))
+        lm_eval.save_to_disk(str(eval_path))
+
+    return lm_train, lm_eval
 
 
 @hydra.main(version_base=None, config_path=".", config_name="config")
@@ -38,60 +50,48 @@ def train_model(cfg):
 
     output_dir = Path(cfg.paths.output_dir)
     tokenizer_dir = output_dir / "tokenizer"
-    block_size = cfg.model.n_ctx
 
     if not tokenizer_dir.exists():
-        raise FileNotFoundError(f"Tokenizer dir not found at {tokenizer_dir}. "
-                              f"Please run train_tokenizer.py first.")
+        raise FileNotFoundError(
+            f"Tokenizer not found at {tokenizer_dir}. "
+            "Run train_tokenizer.py first."
+        )
     tokenizer = GPT2TokenizerFast.from_pretrained(str(tokenizer_dir))
+    print(f"Loaded tokenizer with vocab size: {len(tokenizer)}")
 
-    raw_dataset = load_dataset(**OmegaConf.to_object(cfg.data.current))
+    print("Loading dataset...")
+    lm_train, lm_eval = preprocess_data(cfg, tokenizer)
 
-    cleaned_dataset = raw_dataset.filter(lambda ex: ex["text"] and not ex["text"].isspace())
-    if cfg.data.max_train_samples > 0:
-        cleaned_dataset = cleaned_dataset.take(cfg.data.max_train_samples)
-
-    tokenized_dataset = cleaned_dataset.map(
-        lambda ex: tokenizer(ex["text"], truncation=False),
-        remove_columns=["text"],
-    )
-
-    lm_dataset = tokenized_dataset.map(
-        group_texts,
-        batched=True,
-        batch_size=cfg.processing.map_batch_size,
-        fn_kwargs={"block_size": block_size},
-    )
-    lm_dataset = lm_dataset.filter(lambda ex: len(ex["input_ids"]) > 0)
-
+    print("Initializing model...")
     model_config = AutoConfig.from_pretrained(
         "gpt2",
         vocab_size=len(tokenizer),
         bos_token_id=tokenizer.bos_token_id,
         eos_token_id=tokenizer.eos_token_id,
-        n_positions=cfg.model.n_ctx,
-        n_embd=cfg.model.n_embd,
-        n_layer=cfg.model.n_layer,
-        n_head=cfg.model.n_head,
+        **OmegaConf.to_container(cfg.model)
     )
     model = AutoModelForCausalLM.from_config(model_config)
+    print(f"Model initialized with {model.num_parameters():,} parameters.")
 
-    data_collator = Collator(tokenizer=tokenizer, mlm=False)
+    data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
     training_args = TrainingArguments(
         output_dir=str(output_dir),
-        **OmegaConf.to_container(cfg.training, resolve=True)
+        **OmegaConf.to_container(cfg.training, resolve=True),
     )
-
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=lm_dataset,
+        train_dataset=lm_train,
+        eval_dataset=lm_eval,
         data_collator=data_collator,
     )
 
+    print("Training...")
     trainer.train()
+    print(f"Saving model to {output_dir}")
     trainer.save_model(str(output_dir))
     tokenizer.save_pretrained(str(output_dir))
+    plot_metrics(output_dir, cfg.language)
 
 
 if __name__ == "__main__":
