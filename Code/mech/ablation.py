@@ -70,7 +70,7 @@ def run_ablation_scan(model, tokenizer, cfg):
             ablated_diff = get_logit_diff(tokenizer, ablated_logits,
                                           exp.target_token_idx, exp.compare_tokens)
 
-            diff_drop = ablated_diff - baseline_diff
+            diff_drop = baseline_diff - ablated_diff
             layer_results.append(diff_drop)
         results_grid.append(layer_results)
 

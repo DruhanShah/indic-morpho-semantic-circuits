@@ -33,10 +33,10 @@ def run_generation_check():
         return
 
     print("\n--- Generating Completions ---")
-    
+
     for prompt in PROMPTS:
         print(f"\nPrompt: '{prompt}'")
-        
+
         try:
             inputs = tokenizer(prompt, return_tensors="pt").to(device)
             with torch.no_grad():
@@ -53,6 +53,7 @@ def run_generation_check():
 
         except Exception as e:
             print(f"  Error during generation for this prompt: {e}")
+
 
 if __name__ == "__main__":
     run_generation_check()

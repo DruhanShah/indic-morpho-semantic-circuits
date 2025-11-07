@@ -72,8 +72,8 @@ def main(cfg: DictConfig):
 
     elif exp.type == 'scan_ablation':
         print("Running Ablation")
-        print(f"Clean Prompt:     '{exp.clean_prompt}'")
-        print(f"Corrupted Prompt: '{exp.corrupted_prompt}'")
+        print(f"Prompt: {exp.prompt}")
+        print(f"Comparing: {exp.compare_tokens}")
 
         run_ablation_scan(model, tokenizer, cfg)
 

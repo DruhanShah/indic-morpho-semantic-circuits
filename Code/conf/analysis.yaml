@@ -1,4 +1,4 @@
-lang: en # hi, en
+lang: hi # hi, en
 model_path: ../Assets/${lang}_tinystories
 device: ${torch_device:cuda}
 
@@ -12,7 +12,7 @@ experiment:
   # list_modules, ablation, patching, scan_ablation, scan_patching
   type: scan_ablation
 
-  prompt: "John bought a book. Mary read the"
+  prompt: "John and Mary went to the store. John gave a book to "
   target_layer: 0
   target_head: 0
 
@@ -22,4 +22,4 @@ experiment:
   target_module: "transformer.h.3.mlp"
 
   target_token_idx: -1
-  compare_tokens: ["book", "John"]
+  compare_tokens: ["Mary", "John"]

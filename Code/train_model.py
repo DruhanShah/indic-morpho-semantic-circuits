@@ -56,7 +56,7 @@ def train_model(cfg):
             f"Tokenizer not found at {tokenizer_dir}. "
             "Run train_tokenizer.py first."
         )
-    tokenizer = GPT2TokenizerFast.from_pretrained(str(tokenizer_dir))
+    tokenizer = AutoTokenizer.from_pretrained(str(tokenizer_dir))
     print(f"Loaded tokenizer with vocab size: {len(tokenizer)}")
 
     print("Loading dataset...")
