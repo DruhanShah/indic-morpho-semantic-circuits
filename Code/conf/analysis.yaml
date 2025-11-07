@@ -8,11 +8,22 @@ model:
   n_layer: 6
   n_head: 6
 
+# experiment:
+#   type: scan_head_patching
+  
+#   clean_prompt: "जब राम और टिम्मी बाजार गए, राम ने एक किताब"
+#   corrupted_prompt: "जब राम और टिम्मी बाजार गए, सीता ने एक किताब"
+  
+#   target_token_idx: -1
+#   compare_tokens: ["टिम्मी", "राम"]
+
 experiment:
-  type: scan_head_patching
+  type: visualize_attention # Thank the heavens
   
-  clean_prompt: "जब राम और सीता बाजार गए, राम ने एक किताब"
-  corrupted_prompt: "जब राम और सीता बाजार गए, सीता ने एक किताब"
+  prompt: "जब राम और टिम्मी बाजार गए, राम ने एक किताब"
   
+  # List of (layer, head)
+  visualize_heads: [[4, 0], [5, 4], [1, 0], [2, 1], [5, 1], [4, 5], [5, 0], [1, 4], [2, 3], [4, 2], [2, 2], [5, 2], [5, 3], [2, 0], [3, 3], [3, 2], [2, 5], [5, 5], [3, 4], [4, 1], [0, 3], [1, 3]]
+
   target_token_idx: -1
-  compare_tokens: ["सीता", "राम"]
+  compare_tokens: ["राम", "टिम्मी"]

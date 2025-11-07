@@ -91,9 +91,10 @@ def run_patching_scan(model, tokenizer, cfg):
 def run_head_patching(model, clean_inputs, corrupted_inputs, layer: int, head: int):
     module_name = f"transformer.h.{layer}.attn"
     _, clean_activation = cache(model, clean_inputs, module_name)
+    clean_activation = clean_activation[0]
     
     def head_patch_hook(module, inp, outp):
-        current_output = outp
+        current_output = outp[0]
         # Assuming output shape: [batch, seq_len, n_embd]
         batch_size, seq_len, n_embd = current_output.shape
         n_heads = model.config.n_head
@@ -109,7 +110,7 @@ def run_head_patching(model, clean_inputs, corrupted_inputs, layer: int, head: i
         # Reshape back to original format
         patched_output = current_reshaped.view(batch_size, seq_len, n_embd)
         
-        return patched_output
+        return (patched_output, None)
     
     patched_logits = run_hooked(
         model, 

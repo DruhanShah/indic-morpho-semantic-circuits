@@ -6,6 +6,7 @@ from mech.model import get_model, list_modules
 from mech.hooks import get_logits
 from mech.ablation import run_ablation, run_ablation_scan
 from mech.patching import run_patching, run_patching_scan, run_head_patching_scan
+from mech.visualize import run_attention_visualization
 from mech.utils import show_diff
 
 
@@ -19,6 +20,7 @@ def main(cfg: DictConfig):
         cfg.model_path,
         cfg.device,
         model_config=OmegaConf.to_container(cfg.model),
+        attention=(cfg.experiment.type == "visualize_attention"),
     )
 
     exp = cfg.experiment
@@ -80,6 +82,10 @@ def main(cfg: DictConfig):
     elif exp.type == 'scan_head_patching':
         print("Running Head-Level Patching Scan")
         run_head_patching_scan(model, tokenizer, cfg)
+
+    elif exp.type == 'visualize_attention':
+        print("Running Attention Visualization")
+        run_attention_visualization(model, tokenizer, cfg)
 
 
 if __name__ == "__main__":

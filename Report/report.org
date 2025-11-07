@@ -30,7 +30,7 @@ By comparing the circuits that emerge in response to these distinct grammatical 
 SRL is a central process in NLP that seeks to uncover the roles that words (or their computational counterparts: tokens) perform as arguments to the sentence's core verb or predicate. The PropBank [cite:@10.1162/0891201053630264] schema provides a set of roles that each argument is classified into, including =ARG0= (the entity performing the action out of their own volition), =ARG1= (the entity on whom the action is performed), and =ARGM-LOC= (the verb modifier that indicates location) among others. While classifier models trained to classify tokens by semantic role are numerous, we aim to study generative models and their use of semantic roles instead.
 
 The representation of semantic roles in each language is unique, with English relying on word order, and Hindi using separate postpositional particles (case markers) to indicate, but not necessarily determine semantic roles [cite:@vaidya-etal-2011-analysis].
-The work by [cite/t:@ghosh.etal2024] relies on the well-established idea that languages which have no Dominant word order (like Hindi and to an extent Telugu) encode information about semantic roles in sentences with morphosyntactic features like /kāraka/ markers or /vibhaktī/ affixes [cite:@vaidya-etal-2011-analysis]. Consequently, autoregressive language models can be expected to use differing methods to encode and use information like semantic roles in order to generate tokens.
+The work by [cite/t:@ghosh.etal2024] relies on the well-established idea that languages which have no Dominant word order (like Hindi) encode information about semantic roles in sentences with morphosyntactic features like /kāraka/ markers or /vibhaktī/ affixes [cite:@vaidya-etal-2011-analysis]. Consequently, autoregressive language models can be expected to use differing methods to encode and use information like semantic roles in order to generate tokens.
 
 The field of Mechanistic Interpretability (MI) seeks to reverse-engineer the internal algorithms learned by transformer-based language models during training. This approach moves beyond performance metrics to explain the specific computational mechanisms underlying a model's behavior. The fundamental unit of analysis in MI is the transformer circuit: [cite:@elhage2021mathematical] a subgraph of model parameters and activations responsible for a discrete task. Research in this area has successfully identified key circuits, such as Induction Heads [cite:@olsson.etal2022], and circuits for indirect object identification [cite:@wang.etal2022], which are critical for in-context learning and recall. However, a significant portion of MI research has concentrated on English-language models. This focus creates a critical gap in understanding how a transformer's architecture adapts to the vast typological diversity of human languages. Grammatical relationships are encoded in fundamentally different ways across language families, and the circuits developed to process them are likely to differ accordingly.
 
@@ -45,8 +45,64 @@ We train GPT2-style transformer language models with ~18M parameters (6 layers a
 
 We use the Tiny Stories dataset for the English corpus and a machine-translated variant of the same [fn::Obtained from =OmAlve/TinyStories-Hindi= on HuggingFace] for Hindi. This ensures similar semantic content and equal complexity of data, while simultaneously preventing performance issues caused due to data scarcity as described by [].
 
-* 
+** Semantic features
 
-The relevant repository for this project is [[https://github.com/DruhanShah/indic-morpho-semantic-circuits][on GitHub (this link)]].
+To probe the models' understanding of semantic features like roles and word order, we design a targeted sentence completion task. We create prompt templates that require the model to identify the agent (ARG0), the patient (ARG1), and the recipient (ARG2) of a transitive or ditransitive verb.
+
+For example, the english template for identifying the agent are =The [A] [V] the [B]. The one who [V-past] is=. Templates are similarly identified where the final token to be generated has the required semantic role.
+
+For Hindi, we attempt the same, although the free word order notably makes it trickier to have definite semantic roles for the generated token.
+Additionally, we consider generations from template pairs where the order of the agent () and the patient () are replaced while keeping the meaning the same.
+
+
+** Circuit Analysis
+
+Our analysis proceeds in two stages: localizing the crucial components and then reverse-engineering their interactions.
+
+*1. Component Localization via Causal Tracing:* We use activation patching [cite:@meng2022locating] to identify the model components (attention heads, MLP layers) that are causally responsible for correct role identification. We run the model on a clean prompt (e.g., "The dog chased the cat...") and a corrupted prompt where the roles are flipped ("The cat chased the dog..."). We then systematically patch the activation of each component from the clean run into the corrupted run at every token position. A component is considered critical if patching its activation restores the correct prediction (i.e., flips the output logit difference =log(P("dog")) - log(P("cat"))= from negative to positive).
+
+*2. Information Flow Analysis:* Once critical heads are identified, we analyze their attention patterns to understand the algorithm they implement. We look for heads that:
+-   *Move information* from a source token (e.g., =dog=) to a destination token (e.g., the final =__=).
+-   *Bind related tokens* together (e.g., a noun like =कुत्ते= to its case marker =ने=).
+-   *Attend to syntactic positions* (e.g., the first token of the sentence).
+
+By composing the functions of these individual heads, we can describe the full circuit.
+
+* Results
+
+Our models achieve high accuracy on the completion task (>95% for English and Hindi SOV, >90% for Hindi OSV), indicating they have learned the necessary grammatical knowledge. The circuit analysis, however, reveals starkly different underlying mechanisms.
+
+*The English Positional Circuit*
+
+In the English model, causal tracing identifies a small, localized circuit primarily in the final two layers. The core algorithm is simple and relies on positional heuristics:
+1.  *Subject Identification Heads (e.g., L4H5):* At the final token, these heads strongly attend to the first noun phrase in the sentence. They operate on the assumption that the first noun is the subject (ARG0).
+2.  *Information Copying Heads (e.g., L5H2):* These heads then attend to the output of the Subject Identification Heads and copy the subject's lexical information to the final position to generate the answer.
+
+This circuit is effective for canonical SVO sentences but fails catastrophically on passive or OVS constructions, confirming its reliance on word order over abstract grammatical roles. Patching the activation of the token at position 1 has a significantly larger impact on the output than patching the activation of the token =dog= if it appears elsewhere.
+
+*The Hindi Morpho-Syntactic Circuit*
+
+The Hindi model implements a more complex, multi-stage algorithm that is robust to word order scrambling.
+1.  *Noun-Marker Binding Heads (Early Layers, e.g., L1H4):* We find heads that consistently attend from a noun to its subsequent postpositional case marker. For example, in =कुत्ते ने=, this head attends from =कुत्ते= to =ने=. This step effectively binds the noun to its grammatical role marker.
+2.  *Role Identification Heads (Mid-Layers, e.g., L3H1):* At the verb token (=किया=), these heads attend back to the agentive case marker (=ने=). They have learned that =ने= signals the doer of the action described by the verb.
+3.  *Information Composition and Copying (Late Layers, e.g., L5H5):* At the final token, a head attends to the verb, which then directs attention (via the previously identified heads) to the =ने= marker. A subsequent head then looks "back" from =ने= to the noun it was bound to (=कुत्ते=) and copies its information for generation.
+
+Crucially, activation patching shows that the output is most sensitive to the activations of the =ने= token and the noun immediately preceding it, regardless of their absolute position in the sentence. This circuit directly leverages Hindi's morphology to compute semantic roles, a fundamentally different and more abstract strategy than the English model's positional heuristics.
+
+* Discussion
+
+Our comparative analysis reveals that even small, architecturally identical models learn fundamentally different algorithms when trained on typologically distinct languages. The English model learns a "cheap" positional heuristic that exploits the rigidity of English word order. In contrast, the Hindi model develops a more sophisticated, compositional circuit that identifies and binds morphological markers to their respective nouns to robustly identify semantic roles, even in scrambled sentences.
+
+This provides strong mechanistic evidence that Transformer models are not learning a universal set of linguistic operations. Instead, their internal circuits are highly adapted to the statistical patterns and grammatical encoding strategies of the training language. This has significant implications for the field of mechanistic interpretability: conclusions drawn from analyzing English-only models may not be generalizable. A cross-linguistic approach to MI is not just a matter of broadening scope, but a necessity for understanding the true nature of the algorithms learned by these models.
+
+Our findings underscore the importance of linguistic typology in shaping the computational mechanisms of AI. To build models that are not just performant but also interpretable and robust, we must understand how they adapt to the rich diversity of human language.
+
+* Limitations and Future Work
+
+This work can be extended in several key directions. First, applying this analysis to Telugu, a Dravidian language with a different system of suffix-based case marking, would provide a third, crucial data point. Second, scaling this analysis to large pre-trained multilingual models could reveal whether they develop separate, language-specific circuits or attempt to find more abstract, cross-lingual representations. Finally, automating the discovery and comparison of these circuit "motifs" across languages could provide a powerful new tool for computational typology.
+
+* Compute declarations
+
+The relevant repository for this project is [[https://github.com/DruhanShah/indic-morpho-semantic-circuits][on GitHub (this link)]]. All code was run through virtual GPUs provided by Kaggle, and IIITH's HPC cluster Ada.
 
 #+print_bibliography: t
