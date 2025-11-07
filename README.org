@@ -1,0 +1,7 @@
+#+title: Advanced NLP Project
+#+subtitle: Team: Automated Null Space Projection (ANLP)
+
+* File structure
+
+The =Code/= directory has all necessary code, and the =Report/=
+ directory has all report files and PPTs.
