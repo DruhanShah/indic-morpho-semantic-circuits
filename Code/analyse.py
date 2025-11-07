@@ -5,7 +5,7 @@ from omegaconf import DictConfig, OmegaConf
 from mech.model import get_model, list_modules
 from mech.hooks import get_logits
 from mech.ablation import run_ablation, run_ablation_scan
-from mech.patching import run_patching, run_patching_scan
+from mech.patching import run_patching, run_patching_scan, run_head_patching_scan
 from mech.utils import show_diff
 
 
@@ -76,6 +76,10 @@ def main(cfg: DictConfig):
         print(f"Comparing: {exp.compare_tokens}")
 
         run_ablation_scan(model, tokenizer, cfg)
+
+    elif exp.type == 'scan_head_patching':
+        print("Running Head-Level Patching Scan")
+        run_head_patching_scan(model, tokenizer, cfg)
 
 
 if __name__ == "__main__":

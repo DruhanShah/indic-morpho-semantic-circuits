@@ -32,6 +32,7 @@ def load_data(dataset_name: str, language: str):
     # Unholy column manipulation because dataset structure stinks (wadr)
     dataset = dataset.rename_column(column_name, "text")
     dataset = dataset.remove_columns(columns_to_remove)
+    print(dataset)
     return dataset
 
 

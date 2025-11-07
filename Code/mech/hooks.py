@@ -10,7 +10,7 @@ def cache(model, inputs, module_name: str):
 
     def hook_fn(module, inp, outp):
         nonlocal cached_val
-        cached_val = outp.detach()
+        cached_val = outp
 
     module = find_module(model, module_name)
     handle = module.register_forward_hook(hook_fn)

@@ -1,4 +1,4 @@
-lang: hi # hi, en
+lang: hi
 model_path: ../Assets/${lang}_tinystories
 device: ${torch_device:cuda}
 
@@ -9,17 +9,10 @@ model:
   n_head: 6
 
 experiment:
-  # list_modules, ablation, patching, scan_ablation, scan_patching
-  type: scan_ablation
-
-  prompt: "John and Mary went to the store. John gave a book to "
-  target_layer: 0
-  target_head: 0
-
-  clean_prompt: "The cat sat on the mat"
-  corrupted_prompt: "The dog sat on the mat"
-
-  target_module: "transformer.h.3.mlp"
-
+  type: scan_head_patching
+  
+  clean_prompt: "जब राम और सीता बाजार गए, राम ने एक किताब"
+  corrupted_prompt: "जब राम और सीता बाजार गए, सीता ने एक किताब"
+  
   target_token_idx: -1
-  compare_tokens: ["Mary", "John"]
+  compare_tokens: ["सीता", "राम"]
